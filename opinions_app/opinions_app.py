@@ -1,5 +1,8 @@
 from datetime import datetime
 from random import randrange
+import csv
+
+import click
 
 from flask_migrate import Migrate
 from flask import Flask, abort, flash, redirect, render_template, url_for
@@ -93,7 +96,7 @@ def internal_error(error):
     # В таких случаях можно откатить изменения, не зафиксированные в БД,
     # чтобы в базу не записалось ничего лишнего.
     db.session.rollback()
-    # Пользователю вернётся страница, сгенерированная на основе шаблона 500.html.
+    # Пользователю вернётся страница, сгенерированная на основе шаблона 500
     # Этого шаблона пока нет, но сейчас мы его тоже создадим.
     # Пользователь получит и код HTTP-ответа 500.
     return render_template('500.html'), 500
@@ -104,6 +107,27 @@ def page_not_found(error):
     # При ошибке 404 в качестве ответа вернётся страница, созданная
     # на основе шаблона 404.html, и код HTTP-ответа 404:
     return render_template('404.html'), 404
+
+
+@app.cli.command('load_opinions')
+def load_opinions_command():
+    """Функция загрузки мнений в базу данных."""
+    # Открываем файл:
+    with open('opinions.csv', encoding='utf-8') as f:
+        # Создаём итерируемый объект, который отображает каждую строку
+        # в качестве словаря с ключами из шапки файла:
+        reader = csv.DictReader(f)
+        # Для подсчёта строк добавляем счётчик:
+        counter = 0
+        for row in reader:
+            # Распакованный словарь используем
+            # для создания экземпляра модели Opinion:
+            opinion = Opinion(**row)
+            # Добавляем объект в сессию и коммитим:
+            db.session.add(opinion)
+            db.session.commit()
+            counter += 1
+    click.echo(f'Загружено мнений: {counter}')
 
 
 if __name__ == '__main__':
